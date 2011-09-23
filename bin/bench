@@ -1,0 +1,73 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%% vim: set ft=erlang expandtab shiftwidth=4:
+
+main([Bench, Fmt, Iterations]) ->
+    setup_paths(),
+    code:load_file(logbench),
+    code:load_file(logfmt),
+    try {list_to_existing_atom(Bench), list_to_existing_atom(Fmt)} of
+        {BenchMark, Format} ->
+            case erlang:function_exported(logbench, BenchMark, 1) of
+                true ->
+                    case erlang:function_exported(logfmt, Format, 0) of
+                        true ->
+                            run(BenchMark, Format, Iterations);
+                        false ->
+                            io:format("unknown format ~p~n", [Format]),
+                            usage()
+                    end;
+                false ->
+                    io:format("unknown benchmark ~p~n", [BenchMark]),
+                    usage()
+            end
+    catch
+        _:_ ->
+            io:format("no error~n"),
+            usage()
+    end;
+main(_) ->
+    setup_paths(),
+    usage().
+
+run(Bench, Format, Iterations) ->
+    try list_to_integer(Iterations) of
+        Runs ->
+            {Setup, Fun, Stop} = logbench:Bench(logfmt:Format()),
+            Setup(),
+            io:format("running ~p ~p with ~p iterations~n", [Bench, Format, Iterations]),
+            {Time, _} = timer:tc(fun() -> [Fun() || _ <- lists:seq(0, Runs)], Stop() end),
+            Seconds = Time / 1000000,
+            io:format("Result ~p ops/sec ~p~n", [trunc(Runs/Seconds), Seconds]),
+            OutFile = lists:flatten(["results/", atom_to_list(Bench), "_", atom_to_list(Format)]),
+            ok = file:write_file(OutFile, [integer_to_list(trunc(Runs/Seconds)), $\n], [append]),
+            halt(0)
+    catch
+        _:_ ->
+            usage()
+    end.
+
+usage() ->
+    io:format("Usage: ~s <benchmark> <format> <iterations>~n", [filename:basename(escript:script_name())]),
+    Benchmarks = logbench:module_info(exports) -- [{module_info,0},{module_info,1}],
+    io:format("Available benchmarks:~n"),
+    [io:format("        ~s~n", [Bench]) || {Bench, _} <- Benchmarks],
+    Formats = logfmt:module_info(exports) -- [{module_info,0},{module_info,1}],
+    io:format("Available formats:~n"),
+    [io:format("        ~s~n", [Format]) || {Format, _} <- Formats],
+
+    halt(1).
+
+setup_paths() ->
+    true = code:add_pathz(filename:dirname(escript:script_name()) 
+        ++ "/../ebin"),
+    true = code:add_pathz(filename:dirname(escript:script_name()) 
+        ++ "/../deps/lager/ebin"),
+    true = code:add_pathz(filename:dirname(escript:script_name()) 
+        ++ "/../deps/log4erl/ebin"),
+    true = code:add_pathz(filename:dirname(escript:script_name()) 
+        ++ "/../deps/alog/ebin"),
+    ok.
+
+
+

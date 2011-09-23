@@ -1,0 +1,13 @@
+%% -*- tab-width: 4;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% ex: ts=4 sw=4 et
+{application, logbench,
+ [
+  {description, "Logger benchmark"},
+  {vsn, "0.1.0"},
+  {modules, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {registered, []}
+ ]}.
