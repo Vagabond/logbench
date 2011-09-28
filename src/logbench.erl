@@ -54,7 +54,7 @@ alog_console({Fmt, Args}) ->
 el_file({Fmt, Args}) ->
 	{fun() ->
 				error_logger:tty(false),
-				ok = error_logger:logfile({open, "logs/test.log"})
+				ok = error_logger:logfile({open, "logs/el.log"})
 		end,
 		fun() -> error_logger:error_msg(Fmt, Args) end,
 		fun() -> _ = gen_event:which_handlers(error_logger) end
@@ -63,7 +63,7 @@ el_file({Fmt, Args}) ->
 sync_el_file({Fmt, Args}) ->
 	{fun() ->
 				error_logger:tty(false),
-				ok = error_logger:logfile({open, "logs/test.log"})
+				ok = error_logger:logfile({open, "logs/sync_el.log"})
 		end,
 		fun() -> sync_error_logger:error_msg(Fmt, Args) end,
 		fun() -> ok end
@@ -72,7 +72,7 @@ sync_el_file({Fmt, Args}) ->
 lager_file({Fmt, Args}) ->
 	{fun() ->
 				application:load(lager),
-				application:set_env(lager, handlers, [{lager_file_backend, [{"logs/test.log", info}]}]),
+				application:set_env(lager, handlers, [{lager_file_backend, [{"logs/lager.log", info}]}]),
 				application:start(lager)
 		end,
 		fun() ->
@@ -85,7 +85,7 @@ log4erl_file({Fmt, Args}) ->
 	{fun() ->
 				application:load(log4erl),
 				application:start(log4erl),
-				log4erl:add_file_appender(cmd_logs, {"logs", "test", {time, 0}, 4, "log", info, "%j %T [%L] %l%n"})
+				log4erl:add_file_appender(cmd_logs, {"logs", "log4erl", {time, 0}, 4, "log", info, "%j %T [%L] %l%n"})
 		end,
 		fun() ->
 				log4erl:error(Fmt, Args)
@@ -96,6 +96,11 @@ log4erl_file({Fmt, Args}) ->
 alog_file({Fmt, Args}) ->
 	{fun() ->
 				application:start(sasl),
+				application:load(alog),
+				application:set_env(alog, enabled_loggers, [alog_disk_log]),
+				application:set_env(alog, alog_disk_log, [{name, alog_disk_log},
+						{file, "logs/alogger.log"},
+						{format, external}]),
 				application:start(alog),
 				ok = alog_control:delete_all_flows(),
 				ok = alog_control:add_new_flow({mod,['_']}, {'=<', debug}, [alog_disk_log])
