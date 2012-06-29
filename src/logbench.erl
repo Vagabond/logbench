@@ -18,7 +18,7 @@ lager_console({Fmt, Args}) ->
 	{fun() ->
 				application:load(lager),
 				application:set_env(lager, handlers, [{lager_console_backend, info}]),
-				application:start(lager)
+				lager:start()
 		end,
 		fun() ->
 				lager:error(Fmt, Args)
@@ -73,7 +73,7 @@ lager_file({Fmt, Args}) ->
 	{fun() ->
 				application:load(lager),
 				application:set_env(lager, handlers, [{lager_file_backend, [{"logs/lager.log", info}]}]),
-				application:start(lager)
+				lager:start()
 		end,
 		fun() ->
 				lager:info(Fmt, Args)
