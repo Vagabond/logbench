@@ -40,6 +40,7 @@ run(Bench, Format, Iterations) ->
             Seconds = Time / 1000000,
             io:format("Result ~p ops/sec ~p~n", [trunc(Runs/Seconds), Seconds]),
             OutFile = lists:flatten(["results/", atom_to_list(Bench), "_", atom_to_list(Format)]),
+            ok = filelib:ensure_dir(OutFile),
             ok = file:write_file(OutFile, [integer_to_list(trunc(Runs/Seconds)), $\n], [append]),
             halt(0)
     catch
