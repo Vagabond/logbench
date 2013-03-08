@@ -23,7 +23,7 @@ lager_console({Fmt, Args}) ->
 		fun() ->
 				lager:error(Fmt, Args)
 		end,
-		fun() -> ok end
+		fun() -> _ = gen_event:which_handlers(lager_event) end
 	}.
 
 log4erl_console({Fmt, Args}) ->
@@ -78,7 +78,7 @@ lager_file({Fmt, Args}) ->
 		fun() ->
 				lager:info(Fmt, Args)
 		end,
-		fun() -> ok end
+		fun() -> _ = gen_event:which_handlers(lager_event) end
 	}.
 
 log4erl_file({Fmt, Args}) ->
