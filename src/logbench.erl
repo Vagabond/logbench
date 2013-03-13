@@ -128,7 +128,7 @@ alog_file({Fmt, Args}) ->
 				alog:error(Fmt, Args)
 		end,
 		%% this seems a little flaky, but better than nothing
-		fun() -> _ = sys:get_status(alog_disk_log) end
+		fun() -> _ = sys:get_status(alog_disk_log, infinity) end
 	}.
 
 elog_file({Fmt, Args}) ->
