@@ -36,7 +36,7 @@ run(Bench, Format, Iterations) ->
             {Setup, Fun, Stop} = logbench:Bench(logfmt:Format()),
             Setup(),
             io:format("running ~p ~p with ~p iterations~n", [Bench, Format, Iterations]),
-            {Time, _} = timer:tc(fun() -> [Fun() || _ <- lists:seq(0, Runs)], Stop() end),
+            {Time, _} = timer:tc(fun() -> [Fun() || _ <- lists:seq(1, Runs)], Stop() end),
             Seconds = Time / 1000000,
             io:format("Result ~p ops/sec ~p~n", [trunc(Runs/Seconds), Seconds]),
             OutFile = lists:flatten(["results/", atom_to_list(Bench), "_", atom_to_list(Format)]),
@@ -62,12 +62,6 @@ usage() ->
 setup_paths() ->
     true = code:add_pathz(filename:dirname(escript:script_name()) 
         ++ "/../ebin"),
-    true = code:add_pathz(filename:dirname(escript:script_name()) 
-        ++ "/../deps/lager/ebin"),
-    true = code:add_pathz(filename:dirname(escript:script_name()) 
-        ++ "/../deps/log4erl/ebin"),
-    true = code:add_pathz(filename:dirname(escript:script_name()) 
-        ++ "/../deps/alog/ebin"),
     ok.
 
 
