@@ -3,6 +3,8 @@
 %% vim: set ft=erlang expandtab shiftwidth=4:
 
 main([Bench, Fmt, Iterations]) ->
+    main([Bench, Fmt, Iterations, "1"]);
+main([Bench, Fmt, Iterations, Workers]) ->
     setup_paths(),
     code:load_file(logbench),
     code:load_file(logfmt),
@@ -12,7 +14,7 @@ main([Bench, Fmt, Iterations]) ->
                 true ->
                     case erlang:function_exported(logfmt, Format, 0) of
                         true ->
-                            run(BenchMark, Format, Iterations);
+                            run(BenchMark, Format, Iterations, Workers);
                         false ->
                             io:format("unknown format ~p~n", [Format]),
                             usage()
@@ -30,13 +32,19 @@ main(_) ->
     setup_paths(),
     usage().
 
-run(Bench, Format, Iterations) ->
-    try list_to_integer(Iterations) of
-        Runs ->
+run(Bench, Format, Iterations, WC) ->
+    try {list_to_integer(Iterations), list_to_integer(WC)}  of
+        {Runs, WorkerCount} ->
             {Setup, Fun, Stop} = logbench:Bench(logfmt:Format()),
+            ok = filelib:ensure_dir("logs/phony.log"),
+            RunsPerWorker = Runs div WorkerCount,
             Setup(),
-            io:format("running ~p ~p with ~p iterations~n", [Bench, Format, Iterations]),
-            {Time, _} = timer:tc(fun() -> [Fun() || _ <- lists:seq(1, Runs)], Stop() end),
+            io:format("running ~p ~p with ~p iterations and ~p workers~n", [Bench, Format, Runs, WorkerCount]),
+            {Time, _} = timer:tc(fun() ->
+                        Workers = [spawn_monitor(fun() -> [Fun() || _ <- lists:seq(1, RunsPerWorker)] end) || _ <- lists:seq(1, WorkerCount)],
+                        ok = collect(Workers),
+                        Stop()
+                end),
             Seconds = Time / 1000000,
             io:format("Result ~p ops/sec ~p~n", [trunc(Runs/Seconds), Seconds]),
             OutFile = lists:flatten(["results/", atom_to_list(Bench), "_", atom_to_list(Format)]),
@@ -48,8 +56,16 @@ run(Bench, Format, Iterations) ->
             usage()
     end.
 
+collect([]) ->
+    ok;
+collect(Workers) ->
+    receive
+        {'DOWN', Ref, _, _, _} ->
+            collect(lists:keydelete(Ref, 2, Workers))
+    end.
+
 usage() ->
-    io:format("Usage: ~s <benchmark> <format> <iterations>~n", [filename:basename(escript:script_name())]),
+    io:format("Usage: ~s <benchmark> <format> <iterations> [workers]~n", [filename:basename(escript:script_name())]),
     Benchmarks = logbench:module_info(exports) -- [{module_info,0},{module_info,1}],
     io:format("Available benchmarks:~n"),
     [io:format("        ~s~n", [Bench]) || {Bench, _} <- Benchmarks],
