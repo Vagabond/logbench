@@ -51,6 +51,8 @@ alog_console({Fmt, Args}) ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
 					++ "/../deps/alog/ebin"),
 				application:start(sasl),
+				application:load(alog),
+				application:set_env(alog, install_error_logger_handler, false),
 				application:start(alog),
 				ok = alog_control:delete_all_flows(),
 				ok = alog_control:add_new_flow({mod,['_']}, {'=<', debug}, [alog_tty])
@@ -117,6 +119,7 @@ alog_file({Fmt, Args}) ->
 				application:start(sasl),
 				application:load(alog),
 				application:set_env(alog, enabled_loggers, [alog_disk_log]),
+				application:set_env(alog, install_error_logger_handler, false),
 				application:set_env(alog, alog_disk_log, [{name, alog_disk_log},
 						{file, "logs/alogger.log"},
 						{format, external}]),
@@ -127,8 +130,12 @@ alog_file({Fmt, Args}) ->
 		fun() ->
 				alog:error(Fmt, Args)
 		end,
-		%% this seems a little flaky, but better than nothing
-		fun() -> _ = sys:get_status(alog_disk_log, infinity) end
+		fun() ->
+				_ = sys:get_status(alog_disk_log, infinity),
+				%% make sure everything actually makes it onto disk
+				ok = disk_log:sync(alog_disk_log),
+				ok
+		end
 	}.
 
 elog_file({Fmt, Args}) ->
@@ -137,9 +144,9 @@ elog_file({Fmt, Args}) ->
 					++ "/../deps/elog/ebin"),
 				application:load(elog),
 				application:set_env(elog, level, info),
-				application:set_env(elog, info, [{logger, {elogger_file, [{file, "logs/elog.log"},
-							{size_limit, 10 * 1024 * 1024},
-							{date_break, false}]}}]),
+				application:set_env(elog, logger, {elogger_file, [{file, "logs/elog.log"},
+									{size_limit, 10 * 1024 * 1024},
+									{date_break, false}]}),
 				application:start(elog)
 		end,
 		fun() ->
@@ -153,12 +160,9 @@ elog_console({Fmt, Args}) ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
 					++ "/../deps/elog/ebin"),
 				application:load(elog),
-				%% force module load order
-				code:add_patha("deps/elog/ebin"),
-				%% reload the elogger module, as it conflicts with the elogger project
 				code:load_file(elogger),
 				application:set_env(elog, level, info),
-				application:set_env(elog, info, [{logger, {elogger_console, []}}]),
+				application:set_env(elog, logger, {elogger_console, []}),
 				application:start(elog)
 		end,
 		fun() ->
@@ -176,9 +180,6 @@ elogger_file({Fmt, Args}) ->
 				%% so elogger can use application:get_env/1
 				erlang:group_leader(SaslGL, self()),
 				%% force module load order
-				code:add_patha("deps/elogger/ebin"),
-				%% reload the elogger module, as it conflicts with the elogger project
-				code:load_file(elogger),
 				application:set_env(kernel, error_logger_mf_file, "logs/elogger"),
 				application:set_env(kernel, error_logger_mf_maxbytes, 10 * 1024 * 1024),
 				application:set_env(kernel, error_logger_mf_maxfiles, 5),
@@ -195,7 +196,6 @@ fast_log_file({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
 					++ "/../deps/fast_log/ebin"),
-				code:add_patha("deps/fast_log/ebin"),
 				application:load(fast_log),
 				application:set_env(fast_log, loggers, [[{name, fast_logger}, {file, "logs/fast_log.log"}, {file_size, 10 * 1024 * 1024}]]),
 				error_logger:tty(false),
@@ -203,6 +203,9 @@ fast_log_file({Fmt, Args}) ->
 				application:start(fast_log)
 		end,
 		fun() -> fast_log:info(fast_logger, token, Fmt, Args) end,
-		fun() -> _ = gen_event:which_handlers(fast_logger) end
+		fun() ->
+				%% make sure the gen_event is drained
+				_ = gen_event:which_handlers(fast_logger)
+		end
 	}.
 

@@ -8,6 +8,7 @@ main([Bench, Fmt, Iterations, Workers]) ->
     setup_paths(),
     code:load_file(logbench),
     code:load_file(logfmt),
+    code:load_file(memgraph),
     try {list_to_existing_atom(Bench), list_to_existing_atom(Fmt)} of
         {BenchMark, Format} ->
             case erlang:function_exported(logbench, BenchMark, 1) of
@@ -38,6 +39,8 @@ run(Bench, Format, Iterations, WC) ->
             {Setup, Fun, Stop} = logbench:Bench(logfmt:Format()),
             ok = filelib:ensure_dir("logs/phony.log"),
             RunsPerWorker = Runs div WorkerCount,
+            {_Date, {Hour, Minute, _Second}} = calendar:local_time(),
+            memgraph:start(atom_to_list(Bench)++"_"++atom_to_list(Format)),
             Setup(),
             io:format("running ~p ~p with ~p iterations and ~p workers~n", [Bench, Format, Runs, WorkerCount]),
             {Time, _} = timer:tc(fun() ->
@@ -50,6 +53,7 @@ run(Bench, Format, Iterations, WC) ->
             OutFile = lists:flatten(["results/", atom_to_list(Bench), "_", atom_to_list(Format)]),
             ok = filelib:ensure_dir(OutFile),
             ok = file:write_file(OutFile, [integer_to_list(trunc(Runs/Seconds)), $\n], [append]),
+            memgraph:graph(integer_to_list(Hour) ++":"++ integer_to_list(Minute), atom_to_list(Bench)++"_"++atom_to_list(Format)),
             halt(0)
     catch
         _:_ ->
@@ -76,8 +80,10 @@ usage() ->
     halt(1).
 
 setup_paths() ->
-    true = code:add_pathz(filename:dirname(escript:script_name()) 
+    true = code:add_patha(filename:dirname(escript:script_name())
         ++ "/../ebin"),
+    true = code:add_patha(filename:dirname(escript:script_name())
+        ++ "/../deps/errd/ebin"),
     ok.
 
 
