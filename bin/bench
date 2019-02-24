@@ -1,5 +1,6 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
+%%! -pa _build/default/lib/goldrush/ebin 
 %% vim: set ft=erlang expandtab shiftwidth=4:
 
 main([Bench, Fmt, Iterations]) ->
@@ -41,6 +42,7 @@ run(Bench, Format, Iterations, WC) ->
             RunsPerWorker = Runs div WorkerCount,
             {_Date, {Hour, Minute, _Second}} = calendar:local_time(),
             memgraph:start(atom_to_list(Bench)++"_"++atom_to_list(Format)),
+            spawn(fun() -> graph_loop(integer_to_list(Hour) ++":"++ integer_to_list(Minute), atom_to_list(Bench)++"_"++atom_to_list(Format)) end),
             Setup(),
             io:format("running ~p ~p with ~p iterations and ~p workers~n", [Bench, Format, Runs, WorkerCount]),
             {Time, _} = timer:tc(fun() ->
@@ -68,6 +70,11 @@ collect(Workers) ->
             collect(lists:keydelete(Ref, 2, Workers))
     end.
 
+graph_loop(Time, Name) ->
+    timer:sleep(1000),
+    memgraph:graph(Time, Name),
+    graph_loop(Time, Name).
+
 usage() ->
     io:format("Usage: ~s <benchmark> <format> <iterations> [workers]~n", [filename:basename(escript:script_name())]),
     Benchmarks = logbench:module_info(exports) -- [{module_info,0},{module_info,1}],
@@ -81,9 +88,13 @@ usage() ->
 
 setup_paths() ->
     true = code:add_patha(filename:dirname(escript:script_name())
-        ++ "/../ebin"),
+        ++ "/../_build/default/lib/logbench/ebin"),
     true = code:add_patha(filename:dirname(escript:script_name())
-        ++ "/../deps/errd/ebin"),
+        ++ "/../_build/default/lib/errd/ebin"),
+    true = code:add_patha(filename:dirname(escript:script_name())
+        ++ "/../_build/default/lib/goldrush/ebin"),
+    true = code:add_patha(filename:dirname(escript:script_name())
+        ++ "/../_build/default/lib/lager/ebin"),
     ok.
 
 

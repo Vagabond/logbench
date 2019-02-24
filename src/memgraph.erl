@@ -17,7 +17,7 @@ init(Name) ->
 	{ok, _} = errd_server:command(RRD,
 			#rrd_create{file=FileName,
 				step=1,
-				ds_defs = [#rrd_ds{name=Name, args="10:0:U", type = gauge}],
+				ds_defs = [#rrd_ds{name="memory", args="10:0:U", type = gauge}],
 				rra_defs = [
 					#rrd_rra{cf=last, args="0.5:1:3600"}
 					]}),
@@ -29,7 +29,7 @@ loop(RRD, Name) ->
 	receive
 		update ->
 			Mem = erlang:memory(total),
-			errd_server:command(RRD, #rrd_update{file=FileName, updates=[#rrd_ds_update{name=Name, value=Mem}]}),
+			errd_server:command(RRD, #rrd_update{file=FileName, updates=[#rrd_ds_update{name="memory", value=Mem}]}),
 			erlang:send_after(1000, self(), update)
 	end,
 	loop(RRD, Name).
@@ -39,5 +39,6 @@ graph() ->
 
 graph(Start, Name) ->
 	{ok, RRD} = errd_server:start_link(),
-	Command = "graph "++Name++".png --start "++Start++" --imgformat PNG --height 200 --width 600 DEF:"++Name++"="++Name++".rrd:"++Name++":LAST LINE2:"++Name++"#000000:"++Name++"\n",
+  Name2 = "memory",
+	Command = "graph "++Name++".png --start "++Start++" --imgformat PNG --height 200 --width 600 DEF:"++Name2++"="++Name++".rrd:"++Name2++":LAST LINE2:"++Name2++"#000000:"++Name2++"\n",
 	errd_server:raw(RRD, Command).

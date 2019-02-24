@@ -1,24 +1,35 @@
 -module(logbench).
 
 -compile([{parse_transform, lager_transform}, export_all]).
--include_lib("elog/include/elog.hrl").
+%-include_lib("elog/include/elog.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 el_console({Fmt, Args}) ->
-	{fun() -> ok end,
+	{fun() ->
+           catch begin
+                     logger:remove_handler(default),
+                     error_logger:start(),
+                     error_logger:add_report_handler(error_logger_tty_h)
+                 end
+   end,
 		fun() -> error_logger:error_msg(Fmt, Args) end,
 		fun() -> _ = gen_event:which_handlers(error_logger) end
 	}.
 
 sync_el_console({Fmt, Args}) ->
-	{fun() -> ok end,
+	{fun() ->
+           catch begin
+                     logger:remove_handler(default),
+                     error_logger:start(),
+                     error_logger:add_report_handler(error_logger_tty_h)
+                 end
+   end,
 		fun() -> sync_error_logger:error_msg(Fmt, Args) end,
 		fun() -> ok end
 	}.
 
 lager_console({Fmt, Args}) ->
 	{fun() ->
-				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/lager/ebin"),
 				application:load(lager),
 				application:set_env(lager, error_logger_redirect, false),
 				application:set_env(lager, crash_log, undefined),
@@ -63,8 +74,49 @@ alog_console({Fmt, Args}) ->
 		fun() -> ok end
 	}.
 
+logger_console({Fmt, Args}) ->
+    {fun() ->
+             %% the defaults are fine
+             ok
+     end,
+     fun() -> ?LOG_ERROR(Fmt, Args) end,
+     fun() ->
+             logger_std_h:info(default)
+     end
+    }.
+
+logger_lager_console({Fmt, Args}) ->
+    {ok, C} = logger:get_handler_config(default),
+    {fun() ->
+             C2 = C#{formatter => {lager_logger_formatter, #{report_cb => fun lager_logger_formatter:report_cb/1}}},
+             ok = logger:set_handler_config(default, C2)
+     end,
+     fun() -> ?LOG_ERROR(Fmt, Args) end,
+     fun() ->
+             logger_std_h:info(default)
+     end
+    }.
+
+logger_limited_console({Fmt, Args}) ->
+    {ok, C} = logger:get_handler_config(default),
+    {fun() ->
+             #{formatter := {logger_formatter, F}} = C,
+             ok = logger:set_handler_config(default, C#{formatter => {logger_formatter, F#{max_size => 1024, chars_limit => 1024}}})
+     end,
+     fun() -> ?LOG_ERROR(Fmt, Args) end,
+     fun() ->
+             logger_std_h:info(default)
+     end
+    }.
+
+
+
 el_file({Fmt, Args}) ->
 	{fun() ->
+           catch begin
+                logger:remove_handler(default),
+                error_logger:start()
+            end,
 				error_logger:tty(false),
 				ok = error_logger:logfile({open, "logs/el.log"})
 		end,
@@ -74,6 +126,10 @@ el_file({Fmt, Args}) ->
 
 sync_el_file({Fmt, Args}) ->
 	{fun() ->
+           catch begin
+                logger:remove_handler(default),
+                error_logger:start()
+            end,
 				error_logger:tty(false),
 				ok = error_logger:logfile({open, "logs/sync_el.log"})
 		end,
@@ -83,8 +139,6 @@ sync_el_file({Fmt, Args}) ->
 
 lager_file({Fmt, Args}) ->
 	{fun() ->
-				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/lager/ebin"),
 				application:load(lager),
 				application:set_env(lager, error_logger_redirect, false),
 				application:set_env(lager, crash_log, undefined),
@@ -138,38 +192,38 @@ alog_file({Fmt, Args}) ->
 		end
 	}.
 
-elog_file({Fmt, Args}) ->
-	{fun() ->
-				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/elog/ebin"),
-				application:load(elog),
-				application:set_env(elog, level, info),
-				application:set_env(elog, logger, {elogger_file, [{file, "logs/elog.log"},
-									{size_limit, 10 * 1024 * 1024},
-									{date_break, false}]}),
-				application:start(elog)
-		end,
-		fun() ->
-				?INFO(Fmt, Args)
-		end,
-		fun() -> _ = sys:get_status('elogger-info', infinity) end
-	}.
+%elog_file({Fmt, Args}) ->
+	%{fun() ->
+				%true = code:add_pathz(filename:dirname(escript:script_name())
+					%++ "/../deps/elog/ebin"),
+				%application:load(elog),
+				%application:set_env(elog, level, info),
+				%application:set_env(elog, logger, {elogger_file, [{file, "logs/elog.log"},
+									%{size_limit, 10 * 1024 * 1024},
+									%{date_break, false}]}),
+				%application:start(elog)
+		%end,
+		%fun() ->
+				%?INFO(Fmt, Args)
+		%end,
+		%fun() -> _ = sys:get_status('elogger-info', infinity) end
+	%}.
 
-elog_console({Fmt, Args}) ->
-	{fun() ->
-				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/elog/ebin"),
-				application:load(elog),
-				code:load_file(elogger),
-				application:set_env(elog, level, info),
-				application:set_env(elog, logger, {elogger_console, []}),
-				application:start(elog)
-		end,
-		fun() ->
-				?INFO(Fmt, Args)
-		end,
-		fun() -> _ = sys:get_status('elogger-info', infinity) end
-	}.
+%elog_console({Fmt, Args}) ->
+	%{fun() ->
+				%true = code:add_pathz(filename:dirname(escript:script_name())
+					%++ "/../deps/elog/ebin"),
+				%application:load(elog),
+				%code:load_file(elogger),
+				%application:set_env(elog, level, info),
+				%application:set_env(elog, logger, {elogger_console, []}),
+				%application:start(elog)
+		%end,
+		%fun() ->
+				%?INFO(Fmt, Args)
+		%end,
+		%fun() -> _ = sys:get_status('elogger-info', infinity) end
+	%}.
 
 elogger_file({Fmt, Args}) ->
 	{fun() ->
@@ -208,4 +262,43 @@ fast_log_file({Fmt, Args}) ->
 				_ = gen_event:which_handlers(fast_logger)
 		end
 	}.
+
+logger_file({Fmt, Args}) ->
+    {ok, #{config := Config} = C} = logger:get_handler_config(default),
+    {fun() ->
+             C2 = C#{config => Config#{type => {file, "logs/logger.log"}}},
+             ok = logger:remove_handler(default),
+             ok = logger:add_handler(default, logger_std_h, C2)
+     end,
+     fun() -> ?LOG_ERROR(Fmt, Args) end,
+     fun() ->
+             logger_std_h:info(default)
+     end
+    }.
+
+logger_lager_file({Fmt, Args}) ->
+    {ok, #{config := Config} = C} = logger:get_handler_config(default),
+    {fun() ->
+             C2 = C#{config => Config#{type => {file, "logs/logger.log"}}, formatter => {lager_logger_formatter, #{report_cb => fun lager_logger_formatter:report_cb/1}}},
+             ok = logger:remove_handler(default),
+             ok = logger:add_handler(default, logger_std_h, C2)
+     end,
+     fun() -> ?LOG_ERROR(Fmt, Args) end,
+     fun() ->
+             logger_std_h:info(default)
+     end
+    }.
+
+logger_limited_file({Fmt, Args}) ->
+    {ok, #{config := Config} = C} = logger:get_handler_config(default),
+    {fun() ->
+             #{formatter := {logger_formatter, F}} = C,
+             ok = logger:remove_handler(default),
+             ok = logger:add_handler(default, logger_std_h, C#{config => Config#{type => {file, "logs/logger.log"}}, formatter => {logger_formatter, F#{max_size => 1024, chars_limit => 1024}}})
+     end,
+     fun() -> ?LOG_ERROR(Fmt, Args) end,
+     fun() ->
+             logger_std_h:info(default)
+     end
+    }.
 
