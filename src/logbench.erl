@@ -45,7 +45,7 @@ lager_console({Fmt, Args}) ->
 log4erl_console({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/log4erl/ebin"),
+					++ "/../_build/default/lib/log4erl/ebin"),
 				application:load(log4erl),
 				application:start(log4erl),
 				log4erl:add_console_appender(cmd_logs, {info, "%j %T [%L] %l%n"})
@@ -60,7 +60,7 @@ log4erl_console({Fmt, Args}) ->
 alog_console({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/alog/ebin"),
+					++ "/../_build/default/lib/alog/ebin"),
 				application:start(sasl),
 				application:load(alog),
 				application:set_env(alog, install_error_logger_handler, false),
@@ -154,7 +154,7 @@ lager_file({Fmt, Args}) ->
 log4erl_file({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/log4erl/ebin"),
+					++ "/../_build/default/lib/log4erl/ebin"),
 				application:load(log4erl),
 				application:start(log4erl),
 				log4erl:add_file_appender(cmd_logs, {"logs", "log4erl", {size, 10*1024*1024}, 4, "log", info, "%j %T [%L] %l%n"})
@@ -169,7 +169,7 @@ log4erl_file({Fmt, Args}) ->
 alog_file({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/alog/ebin"),
+					++ "/../_build/default/lib/alog/ebin"),
 				application:start(sasl),
 				application:load(alog),
 				application:set_env(alog, enabled_loggers, [alog_disk_log]),
@@ -195,7 +195,7 @@ alog_file({Fmt, Args}) ->
 %elog_file({Fmt, Args}) ->
 	%{fun() ->
 				%true = code:add_pathz(filename:dirname(escript:script_name())
-					%++ "/../deps/elog/ebin"),
+					%++ "/../_build/default/lib/elog/ebin"),
 				%application:load(elog),
 				%application:set_env(elog, level, info),
 				%application:set_env(elog, logger, {elogger_file, [{file, "logs/elog.log"},
@@ -212,7 +212,7 @@ alog_file({Fmt, Args}) ->
 %elog_console({Fmt, Args}) ->
 	%{fun() ->
 				%true = code:add_pathz(filename:dirname(escript:script_name())
-					%++ "/../deps/elog/ebin"),
+					%++ "/../_build/default/lib/elog/ebin"),
 				%application:load(elog),
 				%code:load_file(elogger),
 				%application:set_env(elog, level, info),
@@ -228,7 +228,7 @@ alog_file({Fmt, Args}) ->
 elogger_file({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/elogger/ebin"),
+					++ "/../_build/default/lib/elogger/ebin"),
 				[[SaslGL]] = ets:match(ac_tab, {{application_master, kernel}, '$1'}),
 				%% set our group leader to the one from kernel
 				%% so elogger can use application:get_env/1
@@ -249,7 +249,7 @@ elogger_file({Fmt, Args}) ->
 fast_log_file({Fmt, Args}) ->
 	{fun() ->
 				true = code:add_pathz(filename:dirname(escript:script_name())
-					++ "/../deps/fast_log/ebin"),
+					++ "/../_build/default/lib/fast_log/ebin"),
 				application:load(fast_log),
 				application:set_env(fast_log, loggers, [[{name, fast_logger}, {file, "logs/fast_log.log"}, {file_size, 10 * 1024 * 1024}]]),
 				error_logger:tty(false),
